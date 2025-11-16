@@ -55,7 +55,7 @@ def save_feature_importance(
     print(f"Feature importance image saved to: {output_path}")
 
     if use_mlflow:
-        mlflow.log_artifact(output_path, artifact_path="plots")
+        mlflow.log_artifact(output_path)
 
 
 def plot_actual_vs_pred(
@@ -102,7 +102,7 @@ def plot_actual_vs_pred(
 
     print(f"Scatter plot saved to: {output_path}")
     if use_mlflow:
-        mlflow.log_artifact(output_path, artifact_path="plots")
+        mlflow.log_artifact(output_path)
 
 
 def save_actual_pred_to_excel(
