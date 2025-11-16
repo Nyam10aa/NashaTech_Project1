@@ -49,10 +49,6 @@ class DataClient:
             else:
                 self.data = pd.concat([self.data, data])
 
-            count += 1
-            if count == 7 * 5:
-                break
-
         self.data.columns = sensor_list
         self.data.index = pd.to_datetime(
             self.data.index.str.strip(), format="%Y-%m-%d %H:%M:%S"
