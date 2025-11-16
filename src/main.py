@@ -23,6 +23,33 @@ def main():
 
     # -------------------- approach: aa_xgboost --------------------
     parser_approach_aa = subparsers.add_parser("aa_xgboost_train", help="")
+    parser_approach_aa.add_argument(
+        "--train_start", type=str, default="2022-10-01 00:10:00"
+    )
+    parser_approach_aa.add_argument(
+        "--train_end", type=str, default="2023-10-01 00:00:00"
+    )
+    parser_approach_aa.add_argument(
+        "--test_start", type=str, default="2023-10-01 00:10:00"
+    )
+    parser_approach_aa.add_argument(
+        "--test_end", type=str, default="2024-10-01 00:00:00"
+    )
+
+    parser_approach_aa.add_argument("--categorical_col", type=str, default="")
+    parser_approach_aa.add_argument(
+        "--numerical_col", type=str, default="外気温度,外気湿度"
+    )
+    parser_approach_aa.add_argument("--target_col", type=str, default="供給先A冷水熱量")
+
+    parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
+    parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
+    parser_approach_aa.add_argument("--model_max_depth", type=int, default=5)
+    parser_approach_aa.add_argument("--model_subsample", type=float, default=0.9)
+    parser_approach_aa.add_argument("--model_colsample_bytree", type=float, default=0.8)
+    parser_approach_aa.add_argument(
+        "--model_objective", type=str, default="reg:squarederror"
+    )
 
     # --------------------  --------------------
     args = parser.parse_args()

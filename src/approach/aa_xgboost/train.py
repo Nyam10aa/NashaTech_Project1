@@ -8,7 +8,8 @@ import pandas as pd
 import setuptools
 import xgboost as xgb
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import (mean_absolute_error, mean_squared_error,
+                             root_mean_squared_error)
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -17,7 +18,9 @@ from xgboost import XGBRegressor
 from .utils.data_loader import DataClient
 
 
-def save_feature_importance(model, feature_names, output_path="feature_importance.png"):
+def save_feature_importance(
+    model, feature_names, output_path="workdir/feature_importance.png", use_mlflow=False
+):
     """
     Save XGBoost model feature importance as an image with important features on top.
     """
@@ -38,7 +41,7 @@ def save_feature_importance(model, feature_names, output_path="feature_importanc
     sorted_importances = importances[sorted_idx]
 
     # Plot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(8, 4))
     plt.barh(sorted_features, sorted_importances)
     plt.xlabel("Importance (Gain)")
     plt.ylabel("Feature")
@@ -46,13 +49,18 @@ def save_feature_importance(model, feature_names, output_path="feature_importanc
     plt.gca().invert_yaxis()  # ← IMPORTANT: flip so highest importance is on top
     plt.tight_layout()
 
-    plt.savefig(output_path, dpi=300)
+    plt.savefig(output_path)  # , dpi=300)
     plt.close()
 
     print(f"Feature importance image saved to: {output_path}")
 
+    if use_mlflow:
+        mlflow.log_artifact(output_path, artifact_path="plots")
 
-def plot_actual_vs_pred(y_true, y_pred, output_path="actual_vs_pred.png"):
+
+def plot_actual_vs_pred(
+    y_true, y_pred, output_path="workdir/actual_vs_pred.png", use_mlflow=False
+):
     """
     Create and save scatter plot of actual vs predicted values for XGBoost models.
 
@@ -73,7 +81,7 @@ def plot_actual_vs_pred(y_true, y_pred, output_path="actual_vs_pred.png"):
     y_pred = np.array(y_pred)
 
     # Plot settings
-    plt.figure(figsize=(7, 7))
+    plt.figure(figsize=(5, 5))
     plt.scatter(y_true, y_pred, s=15, alpha=0.6)
 
     # 45-degree line
@@ -89,21 +97,47 @@ def plot_actual_vs_pred(y_true, y_pred, output_path="actual_vs_pred.png"):
 
     # Save
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300)
+    plt.savefig(output_path)  # , dpi=300)
     plt.close()
 
     print(f"Scatter plot saved to: {output_path}")
+    if use_mlflow:
+        mlflow.log_artifact(output_path, artifact_path="plots")
 
 
-def extract_from_datetime(datetime_str):
-    dt = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
+def save_actual_pred_to_excel(
+    y_true, y_pred, index, output_path="workdir/actual_pred.xlsx", use_mlflow=False
+):
 
-    # month = dt.month
-    # day = dt.day
-    # weekday = dt.weekday()     # Monday=0, Sunday=6
-    # hour = dt.hour
-    # minute = dt.minute
+    # Convert to numpy
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # Create DataFrame
+    df_out = pd.DataFrame(
+        {
+            "index": np.array(index),
+            "actual": y_true,
+            "predicted": y_pred,
+            "residual": y_true - y_pred,  # optional: error column
+        }
+    )
+
+    # Save to Excel
+    df_out.to_excel(output_path, index=False)
+
+    print(f"Excel saved to: {output_path}")
+    if use_mlflow:
+        mlflow.log_artifact(output_path)
+
+
+def extract_from_datetime(dt):
+    # dt = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
     return dt.month, dt.day, dt.weekday(), dt.hour, dt.minute
+
+
+def str_to_datetime(datetime_str):
+    return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
 
 
 def train(**kwargs):
@@ -112,19 +146,22 @@ def train(**kwargs):
     print(kwargs["use_mlflow"])
     print("aa train")
 
-    numerical_sensors = [
-        "外気温度",
-        "外気湿度",
-    ]  # "供給先A温水往圧力", "供給先A温水往温度", "供給先A温水還圧力"]
+    numerical_sensors = []
     categorical_sensors = []
-    target_sensor = "供給先A冷水熱量"
+    if kwargs["numerical_col"] != "":
+        numerical_sensors = kwargs["numerical_col"].split(",")
+
+    if kwargs["categorical_col"] != "":
+        categorical_sensors = kwargs["categorical_col"].split(",")
+    target_sensor = kwargs["target_col"]
 
     sensor_list = numerical_sensors + categorical_sensors + [target_sensor]
+    print(sensor_list)
 
     data_client = DataClient(kwargs["data"], sensor_list=sensor_list)
 
     df = data_client.get_all_data_by_sensor_list(sensor_list=sensor_list)
-    df.columns = sensor_list
+    # df.columns = sensor_list
     df.ffill(inplace=True)
 
     df[["month", "day", "weekday", "hour", "minute"]] = pd.DataFrame(
@@ -162,12 +199,12 @@ def train(**kwargs):
     # 3. XGBoost model
     # -------------------------
     model = XGBRegressor(
-        n_estimators=500,
-        learning_rate=0.01,
-        max_depth=5,
-        subsample=0.9,
-        colsample_bytree=0.8,
-        objective="reg:squarederror",
+        n_estimators=kwargs["model_n_estimators"],
+        learning_rate=kwargs["model_learning_rate"],
+        max_depth=kwargs["model_max_depth"],
+        subsample=kwargs["model_subsample"],
+        colsample_bytree=kwargs["model_colsample_bytree"],
+        objective=kwargs["model_objective"],
     )
 
     # -------------------------
@@ -178,18 +215,19 @@ def train(**kwargs):
     # -------------------------
     # 5. Train/Test split
     # -------------------------
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X, y, test_size=0.2, random_state=42
-    # )
+    X_train = X.loc[
+        str_to_datetime(kwargs["train_start"]) : str_to_datetime(kwargs["train_end"]), :
+    ]
+    y_train = y.loc[
+        str_to_datetime(kwargs["train_start"]) : str_to_datetime(kwargs["train_end"])
+    ]
 
-    mid = X.shape[0] // 2
-    X_train = X.iloc[:mid, :]  # 上半分
-    y_train = y.iloc[:mid]
-
-    X_test = X.iloc[mid:, :]  # 下半分
-    y_test = y.iloc[mid:]
-    # X_test = X_train
-    # y_test = y_train
+    X_test = X.loc[
+        str_to_datetime(kwargs["test_start"]) : str_to_datetime(kwargs["test_end"]), :
+    ]
+    y_test = y.loc[
+        str_to_datetime(kwargs["test_start"]) : str_to_datetime(kwargs["test_end"])
+    ]
     print("--------------")
     print(X_train)
     print("--------------")
@@ -208,20 +246,37 @@ def train(**kwargs):
     # -------------------------
     # 7. Prediction & evaluation
     # -------------------------
-    y_pred = pipeline.predict(X_test)
-
-    rmse = root_mean_squared_error(y_test, y_pred)
-
-    print("Predictions:", y_pred)
-    print("RMSE:", rmse)
-
-    save_feature_importance(model=model, feature_names=X.columns.to_list())
-
-    plot_actual_vs_pred(
-        y_true=y_train,
-        y_pred=pipeline.predict(X_train),
-        output_path="train_scatter.png",
+    save_feature_importance(
+        model=model, feature_names=X.columns.to_list(), use_mlflow=kwargs["use_mlflow"]
     )
-    plot_actual_vs_pred(
-        y_true=y_test, y_pred=pipeline.predict(X_test), output_path="test_scatter.png"
-    )
+
+    for data_type, input, actual in [
+        ("train", X_train, y_train),
+        ("test", X_test, y_test),
+    ]:
+        pred = pipeline.predict(input)
+        rmse = root_mean_squared_error(actual, pred)
+        mse = mean_squared_error(actual, pred)
+        mae = mean_absolute_error(actual, pred)
+        print(data_type)
+        print("rmse", rmse)
+        print("mse", mse)
+        print("mae", mae)
+
+        if kwargs["use_mlflow"]:
+            mlflow.log_metric(f"{data_type}_rmse", rmse)
+            mlflow.log_metric(f"{data_type}_mse", mse)
+            mlflow.log_metric(f"{data_type}_mae", mae)
+        plot_actual_vs_pred(
+            y_true=actual,
+            y_pred=pred,
+            output_path=f"workdir/{data_type}_scatter.png",
+            use_mlflow=kwargs["use_mlflow"],
+        )
+        save_actual_pred_to_excel(
+            y_true=actual,
+            y_pred=pred,
+            index=input.index,
+            output_path=f"workdir/{data_type}.xlsx",
+            use_mlflow=kwargs["use_mlflow"],
+        )

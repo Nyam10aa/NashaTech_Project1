@@ -53,8 +53,15 @@ class DataClient:
             if count == 7 * 5:
                 break
 
+        self.data.columns = sensor_list
+        self.data.index = pd.to_datetime(
+            self.data.index.str.strip(), format="%Y-%m-%d %H:%M:%S"
+        )
+
     def get_all_data_by_sensor_list(self, sensor_list):
-        sensor_id_list = [
-            self.cache_sensor_name_to_idx[sensor_name] for sensor_name in sensor_list
-        ]
-        return self.data[sensor_id_list]
+        # sensor_id_list = [
+        #     self.cache_sensor_name_to_idx[sensor_name] for sensor_name in sensor_list
+        # ]
+        return self.data[sensor_list]
+
+    def get_data(self, sensor_list, from_date, to_date): ...
