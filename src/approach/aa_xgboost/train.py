@@ -146,6 +146,9 @@ def train(**kwargs):
     print(kwargs["use_mlflow"])
     print("aa train")
 
+    if kwargs["use_mlflow"]:
+        mlflow.xgboost.autolog()
+
     numerical_sensors = []
     categorical_sensors = []
     if kwargs["numerical_col"] != "":
@@ -243,6 +246,16 @@ def train(**kwargs):
     # -------------------------
     pipeline.fit(X_train, y_train)
 
+    if kwargs["use_mlflow"] and kwargs["no_save_model"]:
+        # mlflow.xgboost.log_model(model,  name="model")
+
+        model_loaded = mlflow.xgboost.load_model(
+            f"runs:/{mlflow.active_run().info.run_id}/model"
+        )
+        pipeline_loaded = Pipeline(
+            steps=[("preprocess", preprocess), ("model", model_loaded)]
+        )
+
     # -------------------------
     # 7. Prediction & evaluation
     # -------------------------
@@ -250,11 +263,12 @@ def train(**kwargs):
         model=model, feature_names=X.columns.to_list(), use_mlflow=kwargs["use_mlflow"]
     )
 
-    for data_type, input, actual in [
-        ("train", X_train, y_train),
-        ("test", X_test, y_test),
+    for data_type, input, actual, pipe in [
+        ("train", X_train, y_train, pipeline),
+        ("test", X_test, y_test, pipeline),
+        ("test_by_loaded_model", X_test, y_test, pipeline_loaded),
     ]:
-        pred = pipeline.predict(input)
+        pred = pipe.predict(input)
         rmse = root_mean_squared_error(actual, pred)
         mse = mean_squared_error(actual, pred)
         mae = mean_absolute_error(actual, pred)

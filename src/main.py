@@ -12,6 +12,10 @@ def main():
     parser.add_argument(
         "--use-mlflow", action="store_true", help="Enable MLflow logging"
     )
+    parser.add_argument("--experiment", type=str, default="Default")
+    parser.add_argument(
+        "--no-save-model", action="store_false", help="Enable MLflow logging"
+    )
     parser.add_argument("--data", type=str, default="data/processed")
 
     # subparser
@@ -40,7 +44,7 @@ def main():
     parser_approach_aa.add_argument(
         "--numerical_col", type=str, default="外気温度,外気湿度"
     )
-    parser_approach_aa.add_argument("--target_col", type=str, default="供給先A冷水熱量")
+    parser_approach_aa.add_argument("--target_col", type=str, default="供給先B冷水熱量")
 
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
@@ -57,7 +61,7 @@ def main():
     kwargs = vars(args)
 
     if args.use_mlflow:
-        mlflow.set_experiment(args.mode)
+        mlflow.set_experiment(args.experiment)
         mlflow.start_run()
         mlflow.log_params(kwargs)
 
