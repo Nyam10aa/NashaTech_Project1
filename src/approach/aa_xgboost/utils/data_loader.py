@@ -28,12 +28,22 @@ class DataClient:
         self.data = None
         self.metadata = pd.read_csv(f"{data_path}/metadata.csv", index_col=0)
         self.metadata.set_index("index", drop=True, inplace=True)
-        self.cache_sensor_name_to_idx = dict()
+        # self.cache_sensor_name_to_idx = dict()
 
-        for sensor_idx in self.metadata.columns:
-            self.cache_sensor_name_to_idx[self.metadata.loc["name", sensor_idx]] = (
-                sensor_idx
-            )
+        # for sensor_idx in self.metadata.columns:
+        #     self.cache_sensor_name_to_idx[self.metadata.loc["name", sensor_idx]] = (
+        #         sensor_idx
+        #     )
+
+        self.cache_sensor_name_to_idx = {
+            "供給先B冷水熱量": str(1058 - 1),
+            "外気温度": str(938 - 1),
+            "外気湿度": str(939 - 1),
+        }
+        for sensor_name, sensor_idx in self.cache_sensor_name_to_idx.items():
+            assert (
+                self.metadata.loc["name", sensor_idx] == sensor_name
+            ), f"{self.metadata.loc["name", sensor_idx]} -> {sensor_name}"
 
         sensor_id_list = [
             self.cache_sensor_name_to_idx[sensor_name] for sensor_name in sensor_list
