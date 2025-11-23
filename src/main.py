@@ -46,6 +46,9 @@ def main():
     )
     parser_approach_aa.add_argument("--target_col", type=str, default="供給先B冷水熱量")
 
+    parser_approach_aa.add_argument(
+        "--jma_categorical_col", type=str, default="降雪量合計(cm),降水量の合計(mm)"
+    )
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
     parser_approach_aa.add_argument("--model_max_depth", type=int, default=5)

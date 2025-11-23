@@ -16,6 +16,7 @@ from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBRegressor
 
 from .utils.data_loader import DataClient
+from .utils.jma import JmaClient
 
 
 def save_feature_importance(
@@ -149,6 +150,7 @@ def train(**kwargs):
     if kwargs["use_mlflow"]:
         mlflow.xgboost.autolog()
 
+    # ---------------------------------- Sensor Data ----------------------------------
     numerical_sensors = []
     categorical_sensors = []
     if kwargs["numerical_col"] != "":
@@ -180,6 +182,26 @@ def train(**kwargs):
         "hour",
         "minute",
     ]
+
+    # ---------------------------------- JMA ----------------------------------
+    JMA = JmaClient("data/外部データ/jma_札幌.csv")
+    jma_categorical_features = kwargs["jma_categorical_col"].split(",")
+
+    def get_jma_features(datetime_idx):
+        out = []
+        for feature in jma_categorical_features:
+            out.append(JMA.get_flag(date_idx=datetime_idx.date(), col=feature))
+        return out
+
+    df[jma_categorical_features] = pd.DataFrame(
+        df.index.map(get_jma_features).tolist(),
+        index=df.index,
+        columns=jma_categorical_features,
+    )
+    print(df.head(3))
+
+    categorical_cols += jma_categorical_features
+    # ----------------------------------  ----------------------------------
 
     X = df.drop(target_sensor, axis=1)
     y = df[target_sensor]
