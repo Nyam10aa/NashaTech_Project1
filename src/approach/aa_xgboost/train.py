@@ -106,8 +106,19 @@ def plot_actual_vs_pred(
         mlflow.log_artifact(output_path)
 
 
+def daily_metrics(group: pd.DataFrame) -> pd.Series:
+    actual = group["actual"]
+    pred = group["predicted"]
+
+    rmse = root_mean_squared_error(actual, pred)
+    mse = mean_squared_error(actual, pred)
+    mae = mean_absolute_error(actual, pred)
+
+    return pd.Series({"RMSE": rmse, "MAE": mae, "MSE": mse})
+
+
 def save_actual_pred_to_excel(
-    y_true, y_pred, index, output_path="workdir/actual_pred.xlsx", use_mlflow=False
+    y_true, y_pred, index, output_path, daily_metric_path, use_mlflow=False
 ):
 
     # Convert to numpy
@@ -127,9 +138,17 @@ def save_actual_pred_to_excel(
     # Save to Excel
     df_out.to_excel(output_path, index=False)
 
+    daily_result = df_out.copy()
+    daily_result["day"] = daily_result["index"].apply(lambda x: x.date())
+    print(daily_result)
+    print("daily_result")
+    daily_result = daily_result.groupby("day").apply(daily_metrics)
+    daily_result.to_excel(daily_metric_path)
+
     print(f"Excel saved to: {output_path}")
     if use_mlflow:
         mlflow.log_artifact(output_path)
+        mlflow.log_artifact(daily_metric_path)
 
 
 def extract_from_datetime(dt):
@@ -295,16 +314,16 @@ def train(**kwargs):
     for data_type, input, actual, pipe in [
         ("train", X_train, y_train, pipeline),
         ("test", X_test, y_test, pipeline),
-        ("test_by_loaded_model", X_test, y_test, pipeline_loaded),
+        # ("test_by_loaded_model", X_test, y_test, pipeline_loaded),
     ]:
         pred = pipe.predict(input)
         rmse = root_mean_squared_error(actual, pred)
         mse = mean_squared_error(actual, pred)
         mae = mean_absolute_error(actual, pred)
-        print(data_type)
-        print("rmse", rmse)
-        print("mse", mse)
-        print("mae", mae)
+
+        print(f"{data_type} rmse", rmse)
+        print(f"{data_type} mse", mse)
+        print(f"{data_type} mae", mae)
 
         if kwargs["use_mlflow"]:
             mlflow.log_metric(f"{data_type}_rmse", rmse)
@@ -321,5 +340,6 @@ def train(**kwargs):
             y_pred=pred,
             index=input.index,
             output_path=f"workdir/{data_type}.xlsx",
+            daily_metric_path=f"workdir/{data_type}_daily_metrics.xlsx",
             use_mlflow=kwargs["use_mlflow"],
         )
