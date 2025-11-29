@@ -16,6 +16,7 @@ from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBRegressor
 
 from .utils.data_loader import DataClient
+from .utils.holiday import HolidayClient
 from .utils.jma import JmaClient
 
 
@@ -227,7 +228,20 @@ def train(**kwargs):
 
     categorical_cols += jma_categorical_features
     numerical_cols += jma_numerical_features
+    # ---------------------------------- Holiday ----------------------------------
+    if kwargs["holiday_categorical_col"] != "":
+        HOLIDAY = HolidayClient("data/外部データ/syukujitsu.csv")
+        categorical_cols.append(kwargs["holiday_categorical_col"])
+        df[[kwargs["holiday_categorical_col"]]] = pd.DataFrame(
+            [
+                [holiday_flag]
+                for holiday_flag in df.index.map(HOLIDAY.get_holiday_flag).tolist()
+            ],
+            index=df.index,
+        )
+
     # ----------------------------------  ----------------------------------
+    df.to_csv("workdir/df_check_for_preprocess.csv")
 
     X = df.drop(target_sensor, axis=1)
     y = df[target_sensor]

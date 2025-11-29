@@ -52,6 +52,10 @@ def main():
     parser_approach_aa.add_argument(
         "--jma_numerical_col", type=str, default=""
     )  # 平均気温(℃),最高気温(℃),最低気温(℃)
+
+    parser_approach_aa.add_argument(
+        "--holiday_categorical_col", type=str, default=""
+    )  # is_holiday
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
     parser_approach_aa.add_argument("--model_max_depth", type=int, default=5)
