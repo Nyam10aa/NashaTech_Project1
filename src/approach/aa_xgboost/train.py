@@ -185,22 +185,29 @@ def train(**kwargs):
 
     # ---------------------------------- JMA ----------------------------------
     JMA = JmaClient("data/外部データ/jma_札幌.csv")
-    jma_categorical_features = kwargs["jma_categorical_col"].split(",")
+    jma_categorical_features = []
+    jma_numerical_features = []
+    if kwargs["jma_categorical_col"] != "":
+        jma_categorical_features = kwargs["jma_categorical_col"].split(",")
+    if kwargs["jma_numerical_col"] != "":
+        jma_numerical_features = kwargs["jma_numerical_col"].split(",")
 
     def get_jma_features(datetime_idx):
         out = []
         for feature in jma_categorical_features:
             out.append(JMA.get_flag(date_idx=datetime_idx.date(), col=feature))
+        for feature in jma_numerical_features:
+            out.append(JMA.get_value(date_idx=datetime_idx.date(), col=feature))
         return out
 
-    df[jma_categorical_features] = pd.DataFrame(
+    df[jma_categorical_features + jma_numerical_features] = pd.DataFrame(
         df.index.map(get_jma_features).tolist(),
         index=df.index,
-        columns=jma_categorical_features,
     )
     print(df.head(3))
 
     categorical_cols += jma_categorical_features
+    numerical_cols += jma_numerical_features
     # ----------------------------------  ----------------------------------
 
     X = df.drop(target_sensor, axis=1)

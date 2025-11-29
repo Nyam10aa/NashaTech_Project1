@@ -41,13 +41,14 @@ def main():
     )
 
     parser_approach_aa.add_argument("--categorical_col", type=str, default="")
-    parser_approach_aa.add_argument(
-        "--numerical_col", type=str, default="外気温度,外気湿度"
-    )
+    parser_approach_aa.add_argument("--numerical_col", type=str, default="")
     parser_approach_aa.add_argument("--target_col", type=str, default="供給先B冷水熱量")
 
     parser_approach_aa.add_argument(
-        "--jma_categorical_col", type=str, default="降雪量合計(cm),降水量の合計(mm)"
+        "--jma_categorical_col", type=str, default=""
+    )  # 降雪量合計(cm),降水量の合計(mm)
+    parser_approach_aa.add_argument(
+        "--jma_numerical_col", type=str, default="平均気温(℃),最高気温(℃),最低気温(℃)"
     )
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)

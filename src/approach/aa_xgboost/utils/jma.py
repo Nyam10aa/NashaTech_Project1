@@ -34,3 +34,6 @@ class JmaClient:
             return 0
         else:
             return 1
+
+    def get_value(self, date_idx, col):
+        return self.df.loc[date_idx, col]
