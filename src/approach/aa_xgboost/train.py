@@ -18,6 +18,7 @@ from xgboost import XGBRegressor
 from .utils.data_loader import DataClient
 from .utils.holiday import HolidayClient
 from .utils.jma import JmaClient
+from .utils.weather_forecast import WeatherForecastClient
 
 
 def save_feature_importance(
@@ -293,6 +294,7 @@ def train(**kwargs):
     y_test = y.loc[
         str_to_datetime(kwargs["test_start"]) : str_to_datetime(kwargs["test_end"])
     ]
+
     print("--------------")
     print(X_train)
     print("--------------")
@@ -302,6 +304,29 @@ def train(**kwargs):
     print("--------------")
     print(y_test)
     print("--------------")
+
+    if kwargs["use_forecast_for_test"]:
+        assert kwargs["jma_numerical_col"] == "平均気温(℃),最高気温(℃),最低気温(℃)"
+        weather_forecast_client = WeatherForecastClient(
+            [
+                "data/外部データ/source_openmeteo/Historical weather data 20221001_20230930(Sapporo,daily).csv",
+                "data/外部データ/source_openmeteo/Historical weather data 20231001_20240930(Sapporo,daily).csv",
+            ]
+        )
+        print("Using weather forecast .... ")
+
+        def use_forecast(datetime_idx):
+            return weather_forecast_client.get_daily_forecast(
+                datetime_idx=datetime_idx, cols=jma_numerical_features
+            )
+
+        X_test[jma_numerical_features] = pd.DataFrame(
+            X_test.index.map(use_forecast).tolist(),
+            index=X_test.index,
+        )
+
+        print("--------------")
+        print(X_test)
 
     # -------------------------
     # 6. Train

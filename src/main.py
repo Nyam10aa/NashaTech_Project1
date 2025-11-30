@@ -56,6 +56,9 @@ def main():
     parser_approach_aa.add_argument(
         "--holiday_categorical_col", type=str, default=""
     )  # is_holiday
+    parser_approach_aa.add_argument(
+        "--use_forecast_for_test", action="store_true", help=""
+    )
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
     parser_approach_aa.add_argument("--model_max_depth", type=int, default=5)
