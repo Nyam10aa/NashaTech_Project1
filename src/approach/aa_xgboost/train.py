@@ -18,7 +18,7 @@ from xgboost import XGBRegressor
 from .utils.data_loader import DataClient
 from .utils.holiday import HolidayClient
 from .utils.jma import JmaClient
-from .utils.weather_forecast import WeatherForecastClient
+from .utils.openmeteo_weather import WeatherClient
 
 
 def save_feature_importance(
@@ -204,31 +204,83 @@ def train(**kwargs):
         "minute",
     ]
 
-    # ---------------------------------- JMA ----------------------------------
-    JMA = JmaClient("data/外部データ/jma_札幌.csv")
-    jma_categorical_features = []
-    jma_numerical_features = []
-    if kwargs["jma_categorical_col"] != "":
-        jma_categorical_features = kwargs["jma_categorical_col"].split(",")
-    if kwargs["jma_numerical_col"] != "":
-        jma_numerical_features = kwargs["jma_numerical_col"].split(",")
+    # # ---------------------------------- JMA ----------------------------------
+    # JMA = JmaClient("data/外部データ/jma_札幌.csv")
+    # jma_categorical_features = []
+    # jma_numerical_features = []
+    # if kwargs["jma_categorical_col"] != "":
+    #     jma_categorical_features = kwargs["jma_categorical_col"].split(",")
+    # if kwargs["jma_numerical_col"] != "":
+    #     jma_numerical_features = kwargs["jma_numerical_col"].split(",")
 
-    def get_jma_features(datetime_idx):
+    # def get_jma_features(datetime_idx):
+    #     out = []
+    #     for feature in jma_categorical_features:
+    #         out.append(JMA.get_flag(date_idx=datetime_idx.date(), col=feature))
+    #     for feature in jma_numerical_features:
+    #         out.append(JMA.get_value(date_idx=datetime_idx.date(), col=feature))
+    #     return out
+
+    # df[jma_categorical_features + jma_numerical_features] = pd.DataFrame(
+    #     df.index.map(get_jma_features).tolist(),
+    #     index=df.index,
+    # )
+    # print(df.head(3))
+
+    # categorical_cols += jma_categorical_features
+    # numerical_cols += jma_numerical_features
+    # ---------------------------------- Openmeteo ----------------------------------
+    weather_forecast_client = WeatherClient(
+        historical_file_list=[
+            "data/外部データ/source_openmeteo/train data 20221001-20230930/(Actual)Historical weather data 20221001_20230930(Sapporo,daily).csv",
+        ],
+        forecast_file_list=[
+            "data/外部データ/source_openmeteo/train data 20221001-20230930/(Forecast)Weather forecast data 20221001_20230930(Sapporo,daily).csv",
+            "data/外部データ/source_openmeteo/test data 20231001-20240930/「Weather forecast data 20231001_20240930(Sapporo,daily).csv",
+        ],
+    )
+
+    train_start_date = str_to_datetime(kwargs["train_start"]).date()
+    train_end_date = str_to_datetime(kwargs["train_end"]).date()
+    test_start_date = str_to_datetime(kwargs["test_start"]).date()
+    test_end_date = str_to_datetime(kwargs["test_end"]).date()
+
+    openmeteo_categorical_features = []
+    openmeteo_numerical_features = []
+    if kwargs["openmeteo_categorical_col"] != "":
+        openmeteo_categorical_features = kwargs["openmeteo_categorical_col"].split(",")
+    if kwargs["openmeteo_numerical_col"] != "":
+        openmeteo_numerical_features = kwargs["openmeteo_numerical_col"].split(",")
+
+    def get_openmeteo_features(datetime_idx):
         out = []
-        for feature in jma_categorical_features:
-            out.append(JMA.get_flag(date_idx=datetime_idx.date(), col=feature))
-        for feature in jma_numerical_features:
-            out.append(JMA.get_value(date_idx=datetime_idx.date(), col=feature))
+        actual_or_forecast = None
+        print(datetime_idx.date())
+        if train_start_date <= datetime_idx.date() <= train_end_date:
+            actual_or_forecast = kwargs["openmeteo_train_data_type"]
+        elif test_start_date <= datetime_idx.date() <= test_end_date:
+            actual_or_forecast = kwargs["openmeteo_test_data_type"]
+
+        out += weather_forecast_client.get_category_value(
+            datetime_idx=datetime_idx,
+            actual_or_forecast=actual_or_forecast,
+            cols=openmeteo_categorical_features,
+        )
+        out += weather_forecast_client.get_numerical_value(
+            datetime_idx=datetime_idx,
+            actual_or_forecast=actual_or_forecast,
+            cols=openmeteo_numerical_features,
+        )
         return out
 
-    df[jma_categorical_features + jma_numerical_features] = pd.DataFrame(
-        df.index.map(get_jma_features).tolist(),
+    df[openmeteo_categorical_features + openmeteo_numerical_features] = pd.DataFrame(
+        df.index.map(get_openmeteo_features).tolist(),
         index=df.index,
     )
     print(df.head(3))
 
-    categorical_cols += jma_categorical_features
-    numerical_cols += jma_numerical_features
+    categorical_cols += openmeteo_categorical_features
+    numerical_cols += openmeteo_numerical_features
     # ---------------------------------- Holiday ----------------------------------
     if kwargs["holiday_categorical_col"] != "":
         HOLIDAY = HolidayClient("data/外部データ/syukujitsu.csv")
@@ -305,28 +357,28 @@ def train(**kwargs):
     print(y_test)
     print("--------------")
 
-    if kwargs["use_forecast_for_test"]:
-        assert kwargs["jma_numerical_col"] == "平均気温(℃),最高気温(℃),最低気温(℃)"
-        weather_forecast_client = WeatherForecastClient(
-            [
-                "data/外部データ/source_openmeteo/Historical weather data 20221001_20230930(Sapporo,daily).csv",
-                "data/外部データ/source_openmeteo/Historical weather data 20231001_20240930(Sapporo,daily).csv",
-            ]
-        )
-        print("Using weather forecast .... ")
+    # if kwargs["use_forecast_for_test"]:
+    #     assert kwargs["jma_numerical_col"] == "平均気温(℃),最高気温(℃),最低気温(℃)"
+    #     weather_forecast_client = WeatherForecastClient(
+    #         [
+    #             "data/外部データ/source_openmeteo/Historical weather data 20221001_20230930(Sapporo,daily).csv",
+    #             "data/外部データ/source_openmeteo/Historical weather data 20231001_20240930(Sapporo,daily).csv",
+    #         ]
+    #     )
+    #     print("Using weather forecast .... ")
 
-        def use_forecast(datetime_idx):
-            return weather_forecast_client.get_daily_forecast(
-                datetime_idx=datetime_idx, cols=jma_numerical_features
-            )
+    #     def use_forecast(datetime_idx):
+    #         return weather_forecast_client.get_daily_forecast(
+    #             datetime_idx=datetime_idx, cols=jma_numerical_features
+    #         )
 
-        X_test[jma_numerical_features] = pd.DataFrame(
-            X_test.index.map(use_forecast).tolist(),
-            index=X_test.index,
-        )
+    #     X_test[jma_numerical_features] = pd.DataFrame(
+    #         X_test.index.map(use_forecast).tolist(),
+    #         index=X_test.index,
+    #     )
 
-        print("--------------")
-        print(X_test)
+    #     print("--------------")
+    #     print(X_test)
 
     # -------------------------
     # 6. Train

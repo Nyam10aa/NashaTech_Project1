@@ -31,13 +31,13 @@ def main():
         "--train_start", type=str, default="2022-10-01 00:10:00"
     )
     parser_approach_aa.add_argument(
-        "--train_end", type=str, default="2023-10-01 00:00:00"
+        "--train_end", type=str, default="2023-09-30 23:50:00"
     )
     parser_approach_aa.add_argument(
         "--test_start", type=str, default="2023-10-01 00:10:00"
     )
     parser_approach_aa.add_argument(
-        "--test_end", type=str, default="2024-10-01 00:00:00"
+        "--test_end", type=str, default="2024-09-30 23:50:00"
     )
 
     parser_approach_aa.add_argument("--categorical_col", type=str, default="")
@@ -46,19 +46,39 @@ def main():
     )  # 外気温度,外気湿度
     parser_approach_aa.add_argument("--target_col", type=str, default="供給先B冷水熱量")
 
+    # parser_approach_aa.add_argument(
+    #     "--jma_categorical_col", type=str, default=""
+    # )  # 降雪量合計(cm),降水量の合計(mm)
+    # parser_approach_aa.add_argument(
+    #     "--jma_numerical_col", type=str, default=""
+    # )  # 平均気温(℃),最高気温(℃),最低気温(℃)
+
     parser_approach_aa.add_argument(
-        "--jma_categorical_col", type=str, default=""
-    )  # 降雪量合計(cm),降水量の合計(mm)
+        "--openmeteo_categorical_col", type=str, default=""
+    )  # rain,snow
     parser_approach_aa.add_argument(
-        "--jma_numerical_col", type=str, default=""
-    )  # 平均気温(℃),最高気温(℃),最低気温(℃)
+        "--openmeteo_numerical_col", type=str, default=""
+    )  # T_mean,T_max,T_min
+
+    parser_approach_aa.add_argument(
+        "--openmeteo_train_data_type",
+        type=str,
+        default="actual",
+        choices=["actual", "forecast"],
+    )
+    parser_approach_aa.add_argument(
+        "--openmeteo_test_data_type",
+        type=str,
+        default="forecast",
+        choices=["actual", "forecast"],
+    )
 
     parser_approach_aa.add_argument(
         "--holiday_categorical_col", type=str, default=""
     )  # is_holiday
-    parser_approach_aa.add_argument(
-        "--use_forecast_for_test", action="store_true", help=""
-    )
+    # parser_approach_aa.add_argument(
+    #     "--use_forecast_for_test", action="store_true", help=""
+    # )
     parser_approach_aa.add_argument("--model_n_estimators", type=int, default=500)
     parser_approach_aa.add_argument("--model_learning_rate", type=float, default=0.01)
     parser_approach_aa.add_argument("--model_max_depth", type=int, default=5)
